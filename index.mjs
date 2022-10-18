@@ -3,11 +3,12 @@ import * as backend from './build/index.main.mjs';
 const stdlib = loadStdlib({ REACH_NO_WARN: 'Y'});
 
 const startingBalance = stdlib.parseCurrency(1000);
-const accDealer = await stdlib.newTestAccount(stdlib.parseCurrency(5000));
+const accDealer = await stdlib.newTestAccount(stdlib.parseCurrency(10000));
 
 const deck = {1: 'A', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 
   8: '8', 9: '9', 10: '10', 11: 'J', 12: 'Q', 13: 'K'};
 const choices = ['Stay', 'Hit'];
+const outcomes = ['Player wins', 'Dealer wins', 'Draw'];
 
 console.log("Hello Players! Have a seat, let's play blackjack!");
 
@@ -22,45 +23,63 @@ const fmt = (x) => stdlib.formatCurrency(x, 4);
 const cardValue = (x) => (x < 10 ? x : 10);
 const getBalance = async (who) => fmt(await stdlib.balanceOf(who));
 const beforeDealer = await getBalance(accDealer);
+let pAcc = [];
 
 const startPlayers = async () => {
   const runPlayers = async (who) => {
+    let cards = [];
     const acc = await stdlib.newTestAccount(startingBalance);
     const ctc = acc.contract(backend, ctcDealer.getInfo());
-    const accBefore = await getBalance(acc);
+    pAcc.push([who, ctc]);
+    //const accBefore = await getBalance(acc);
     const hand = {
       card1: drawCard(),
       card2: drawCard(),
       wager: stdlib.parseCurrency(Math.floor(Math.random() * 90) + 10)
     }
+    cards.push(deck[hand.card1]);
+    cards.push(deck[hand.card2]);
     const pObj = await ctc.apis.Player.startGame(hand.card1, hand.card2, hand.wager);
-    console.log(`Player summary of: ${stdlib.formatAddress(pObj.addr)}
-       Wager: ${stdlib.formatCurrency(pObj.amt)}
-       1st Card: ${deck[pObj.c1]}
-       2nd Card: ${deck[pObj.c2]}
-       Initial Total: ${pObj.total}`);
-    // this returns some, microUnits for vBank
+
+    // this returns [some, microUnits] for vBank
     const num = await ctc.views.V.vBank();
-    console.log(`Test ${stdlib.formatCurrency(num[1])}`);
+    console.log(`View Test ${stdlib.formatCurrency(num[1])}`);
     while(pObj.total < 14){
       const nCard = drawCard();
+      cards.push(deck[nCard]);
       const nObj = await ctc.apis.Player.getCard(nCard);
       pObj.total = nObj.total;
-      console.log(`${stdlib.formatAddress(acc)} next card is: ${deck[nCard]}
-        for a new total of: ${pObj.total}`);
-    }
-  }
+      pObj.cardCount = nObj.cardCount;
+    }// end of while
+    console.log(`Player summary of: ${stdlib.formatAddress(pObj.addr)}
+       Wager: ${stdlib.formatCurrency(pObj.amt)}
+       Cards: ${cards.join(" ")}
+       Total: ${pObj.total}
+       Count: ${pObj.cardCount}`);
+  }// end of runPlayers
   await runPlayers('One');
   await runPlayers('Two');
   await runPlayers('Three');
   await runPlayers('Four');
+}// end of startPlayers.
+
+const checkWin = async () => {
+  for( const [who, ctc] of pAcc){
+    try{
+      const b = await ctc.apis.Player.checkWin();
+      console.log(`Player ${who} outcome is ${outcomes[b]}`);
+    } catch (e) {
+      console.log(`${e}`);
+    }
+    
+  }
 }
 
 console.log('Starting backends...');
 await Promise.all([
   backend.Dealer(ctcDealer, {
     ...stdlib.hasRandom,
-    bank: stdlib.parseCurrency(2000),
+    bank: stdlib.parseCurrency(9000),
     ready: async () => {
       startPlayers();
       return drawCard();
@@ -84,10 +103,11 @@ await Promise.all([
         console.log(`Dealer total is ${parseInt(sum)}`);
       } else {
         console.log(`Get Card total of ${stdlib.formatAddress(who)} cards is ${parseInt(sum)}`);
-      }
+      };
+      checkWin();
     },
-    showTotalB: async (who, sum) => {
-      console.log(`Get Card total of ${stdlib.formatAddress(who)} cards is ${parseInt(sum)}`);
+    showBalance: (bal) => {
+      console.log(`Balance total: ${stdlib.formatCurrency(bal)}`);
     },
   }),
 ]);
