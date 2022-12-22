@@ -212,8 +212,8 @@ export const main = Reach.App(() => {
     .api(P.checkWin,
       () => {
         check(pSet.member(this), "Sorry, you didn't wager");
-        check(balance() > 1000, 'balance too low');
-        assume(myFromMaybe(wagerMap[this]) < 101, 'assume wager too high')
+        check(balance() > 1000000000, 'balance too low');
+        assume(myFromMaybe(wagerMap[this]) < 101000000, 'assume wager too high')
       },
       () => 0,
       (ret) => {
@@ -224,7 +224,7 @@ export const main = Reach.App(() => {
         const win = winner(pObj.total, dTotal);
         ret(win);
         const bet = myFromMaybe(wagerMap[this]);
-        require(bet < 101, 'bet too high');
+        require(bet < 101000000, 'bet too high');
         const betBal = ((balance() - (wagers + bank) + bet));
         delete wagerMap[this];
         if(win == P_WINS){
