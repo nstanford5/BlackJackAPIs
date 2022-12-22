@@ -53,7 +53,7 @@ const startPlayers = async () => {
 		cards.push(deck[hand.card1])
 		cards.push(deck[hand.card2])
 		console.log(
-			`Having ${stdlib.formatAddress(acc.getAddress())} pay a wager of ${fmt(
+			`Having Player ${who} pay a wager of ${fmt(
 				hand.wager
 			)}`
 		)
@@ -145,6 +145,6 @@ console.log(
 console.log("Players' final balances...")
 for (const [who, _, acc] of pAcc) {
 	console.log(
-		`${who}'s final balance: ${await getBalance(acc)} ${stdlib.standardUnit}`
+		`Player ${who}'s final balance: ${await getBalance(acc)} ${stdlib.standardUnit}`
 	)
 }
